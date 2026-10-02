@@ -31,11 +31,10 @@ module.exports = function validateReview(req, res, next) {
     ) {
       return res.status(400).json({ errors });
     }
-    // On validation error re-render the listing show page with errors and the submitted review
+    // F6: Use findByIdWithDetails so reviews + owner are populated
     const listingId = req.params.id;
-    // Load listing so template can render; do not swallow async errors here
     return require("../models/listing")
-      .findById(listingId)
+      .findByIdWithDetails(listingId)
       .then((listing) => {
         return res
           .status(400)
@@ -47,3 +46,4 @@ module.exports = function validateReview(req, res, next) {
   req.body.review = value;
   next();
 };
+

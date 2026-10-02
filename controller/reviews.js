@@ -1,27 +1,27 @@
 const Listing = require("../models/listing");
-const ExpressError = require("../utils/ExpressError");
 const Review = require("../models/review");
-//post route
+const ExpressError = require("../utils/ExpressError");
+
+// post review
 module.exports.postReview = async (req, res) => {
-  const listing = await Listing.findById(req.params.id);
+  const { id } = req.params;
+
+  // Verify listing exists (404 if not)
+  const listing = await Listing.findByIdWithDetails(id);
   if (!listing) throw new ExpressError(404, "Listing not found");
 
-  const newReview = new Review(req.body.review);
-  newReview.owner = req.user._id;
-  await newReview.save();
+  const { rating, comment } = req.body.review;
+  await Review.create({ listingId: Number(id), userId: req.user.id, rating, comment });
 
-  listing.reviews.push(newReview._id);
-  await listing.save();
   req.flash("success", "posted a review!");
-  res.redirect(`/listings/${listing._id}`);
+  res.redirect(`/listings/${id}`);
 };
-//delete route
+
+// delete review
 module.exports.deleteReview = async (req, res) => {
   const { id, reviewId } = req.params;
-  await Listing.findByIdAndUpdate(id, {
-    $pull: { reviews: reviewId },
-  });
-  await Review.findByIdAndDelete(reviewId);
+  await Review.remove(reviewId);
   req.flash("success", " review deleted !");
   res.redirect(`/listings/${id}`);
 };
+
