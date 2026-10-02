@@ -1,16 +1,19 @@
 {
   "name": "major",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "WanderLust vacation-listing app – MySQL edition",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "seed": "node db/seed.js",
+    "test": "node --test tests/routes.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@mapbox/mapbox-sdk": "^0.16.2",
+    "bcryptjs": "^2.4.3",
     "bootstrap": "^5.3.8",
     "cloudinary": "^1.41.3",
     "connect-flash": "^0.1.1",
@@ -21,11 +24,13 @@
     "express-session": "^1.18.2",
     "joi": "^18.0.2",
     "method-override": "^3.0.0",
-    "mongoose": "^8.18.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
+    "mysql2": "^3.11.0",
     "passport": "^0.7.0",
-    "passport-local": "^1.0.0",
-    "passport-local-mongoose": "^9.0.1"
+    "passport-local": "^1.0.0"
+  },
+  "devDependencies": {
+    "supertest": "^7.0.0"
   }
 }
