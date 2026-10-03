@@ -56,3 +56,21 @@ module.exports.isReviewOwner = async (req, res, next) => {
   next(); // user is the review owner
 };
 
+/**
+ * Middleware factory that restricts access to specific roles.
+ * NOT applied to any route yet – reserved for a future phase.
+ *
+ * Usage: router.get("/admin", requireRole("admin"), handler)
+ */
+module.exports.requireRole = (...roles) => (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    req.session.redirectUrl = req.originalUrl;
+    req.flash("error", "You must be signed in first!");
+    return res.redirect("/login");
+  }
+  if (!roles.includes(req.user.role)) {
+    req.flash("error", "You don't have permission to do that.");
+    return res.redirect("/listings");
+  }
+  next();
+};
