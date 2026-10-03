@@ -7,10 +7,13 @@ CREATE TABLE IF NOT EXISTS users (
   username      VARCHAR(50)   NOT NULL,
   email         VARCHAR(255)  NOT NULL,
   password_hash VARCHAR(255)  NOT NULL,
+  role          ENUM('customer','owner','admin') NOT NULL DEFAULT 'customer',
+  admin_flag    TINYINT GENERATED ALWAYS AS (IF(role = 'admin', 1, NULL)) STORED,
   created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id),
   UNIQUE KEY uq_users_username (username),
-  UNIQUE KEY uq_users_email (email)
+  UNIQUE KEY uq_users_email (email),
+  UNIQUE KEY uq_single_admin (admin_flag)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS listings (
