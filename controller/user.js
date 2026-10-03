@@ -1,21 +1,26 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
+const { SELF_REGISTER_ROLES, ROLE_LABELS } = require("../utils/roles");
 
 // signup routes
 module.exports.renderSignup = (req, res) => {
-  res.render("users/signup.ejs");
+  const queryRole = req.query.role;
+  // Preselect only if it is a valid self-registration role; otherwise default to customer
+  const selectedRole = SELF_REGISTER_ROLES.includes(queryRole) ? queryRole : "customer";
+  res.render("users/signup.ejs", { selectedRole });
 };
 
 // post signup
 module.exports.signupUser = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
+    // req.body has already been validated and sanitised by validateUser middleware
+    const { username, email, password, role } = req.body;
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ username, email, passwordHash });
+    const user = await User.create({ username, email, passwordHash, role });
 
     req.login(user, (err) => {
       if (err) return next(err);
-      req.flash("success", "Welcome to Wanderlust!");
+      req.flash("success", `Welcome to Wanderlust! You are registered as ${ROLE_LABELS[role]}.`);
       res.redirect("/listings");
     });
   } catch (e) {
@@ -37,12 +42,11 @@ module.exports.loginUser = async (req, res) => {
   res.redirect(res.locals.redirectUrl || "/listings");
 };
 
-// logout route
+// logout route – redirects to / (landing page)
 module.exports.logoutUser = (req, res, next) => {
   req.logout(function (err) {
     if (err) return next(err);
     req.flash("success", "Logged out successfully!");
-    res.redirect("/listings");
+    res.redirect("/");
   });
 };
-
