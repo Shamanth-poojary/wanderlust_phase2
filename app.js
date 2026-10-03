@@ -21,6 +21,7 @@ const bcrypt = require("bcryptjs");
 const User = require("./models/user");
 const pool = require("./db/pool");
 const path = require("path");
+const { ensureAdmin } = require("./db/ensureAdmin");
 
 app.engine("ejs", ejsMate);
 app.use(methodOverride("_method"));
@@ -43,7 +44,7 @@ const sessionOptions = {
 app.use(session(sessionOptions));
 app.use(flash());
 
-// Passport config (Section 10.2) – replaces passport-local-mongoose
+// Passport config – replaces passport-local-mongoose
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -54,7 +55,7 @@ passport.use(
       if (!user) return done(null, false, { message: "Incorrect username or password." });
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return done(null, false, { message: "Incorrect username or password." });
-      return done(null, { id: user.id, username: user.username, email: user.email });
+      return done(null, { id: user.id, username: user.username, email: user.email, role: user.role });
     } catch (err) {
       return done(err);
     }
@@ -78,7 +79,8 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.get("/", (req, res) => res.send("root route"));
+const landingRoute = require("./routes/landing");
+app.use("/", landingRoute);
 
 const listingRoutes = require("./routes/listing");
 app.use("/listings", listingRoutes);
@@ -100,14 +102,20 @@ app.use((err, req, res, next) => {
   res.status(statusCode).render("error.ejs", { statusCode, message, err });
 });
 
-// Verify pool connectivity then start server
+// Verify pool connectivity, run ensureAdmin, then start server
 pool
   .execute("SELECT 1")
-  .then(() => {
+  .then(async () => {
+    try {
+      const status = await ensureAdmin();
+      console.log("Admin bootstrap status:", status);
+    } catch (err) {
+      console.error("FATAL: ensureAdmin failed:", err.message);
+      process.exit(1);
+    }
     app.listen(8080, () => console.log("Server started on port 8080"));
   })
   .catch((err) => {
     console.error("FATAL: Cannot connect to MySQL:", err.message);
     process.exit(1);
   });
-
