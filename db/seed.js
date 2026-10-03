@@ -18,6 +18,7 @@ const fs = require("fs");
 const path = require("path");
 const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
+const { ensureAdmin } = require("./ensureAdmin");
 
 // ─── Sample data (from init/data.js) ────────────────────────────────────────
 const sampleListings = [
@@ -159,11 +160,14 @@ async function applySchema(conn) {
   const schemaPath = path.join(__dirname, "schema.sql");
   const sql = fs.readFileSync(schemaPath, "utf8");
 
-  // Split on ";" and run each non-empty statement
+  // Split on ";" and run each non-empty statement.
+  // Skip CREATE DATABASE and USE statements — we are already connected
+  // to the target database and the user may lack global CREATE privilege.
   const statements = sql
     .split(";")
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((s) => !/^\s*(CREATE DATABASE|USE)\b/i.test(s));
 
   for (const stmt of statements) {
     await conn.query(stmt);
@@ -173,21 +177,22 @@ async function applySchema(conn) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function seed() {
-  // Connect WITHOUT selecting a database first so we can run CREATE DATABASE
+  // Connect directly to the wanderlust database.
+  // wanderlust_user has ALL PRIVILEGES on wanderlust.* but no global CREATE DATABASE.
+  // The schema.sql uses CREATE DATABASE IF NOT EXISTS + USE, which are skipped gracefully
+  // when the DB already exists and is already selected.
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || "127.0.0.1",
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || "wanderlust",
     multipleStatements: false,
   });
 
   try {
     console.log("Applying schema…");
     await applySchema(conn);
-
-    // Select the database for subsequent queries
-    await conn.query("USE wanderlust");
 
     // ── Clear existing listings & reviews (users preserved) ───────────────
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
@@ -207,16 +212,16 @@ async function seed() {
 
     let seedUserId;
     if (existing.length > 0) {
-      // Update hash so re-running always produces a fresh password
+      // Update hash and ensure role='owner' on re-runs
+      seedUserId = existing[0].user_id;
       await conn.query(
-        "UPDATE users SET password_hash = ? WHERE username = ?",
+        "UPDATE users SET password_hash = ?, role = 'owner' WHERE username = ?",
         [passwordHash, seedUsername]
       );
-      seedUserId = existing[0].user_id;
-      console.log(`Seed user already exists (id=${seedUserId}), password reset.`);
+      console.log(`Seed user already exists (id=${seedUserId}), password and role reset.`);
     } else {
       const [result] = await conn.query(
-        "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+        "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'owner')",
         [seedUsername, "seeduser@example.com", passwordHash]
       );
       seedUserId = result.insertId;
@@ -261,6 +266,10 @@ async function seed() {
       await conn.rollback();
       throw err;
     }
+
+    // Bootstrap admin using the seed connection
+    const adminStatus = await ensureAdmin(conn);
+    console.log("Admin bootstrap status:", adminStatus);
 
     console.log("Seed complete.");
   } finally {

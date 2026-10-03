@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node app.js",
     "seed": "node db/seed.js",
+    "migrate": "node db/migrate.js",
     "test": "node --test tests/routes.test.js"
   },
   "keywords": [],
