@@ -46,7 +46,7 @@ async function migrate() {
       console.log("Step 1: Added 'role' column to users.");
       roleColumnAdded = true;
     } else {
-      console.log("Step 1: 'role' column already exists – skipped.");
+      console.log("Step 1: 'role' column already exists - skipped.");
     }
 
     // Step 2: only in the run that added the column, promote owners
@@ -57,7 +57,7 @@ async function migrate() {
       );
       console.log("Step 2: Set role='owner' for users who own at least one listing.");
     } else {
-      console.log("Step 2: role column was pre-existing – owner backfill skipped.");
+      console.log("Step 2: role column was pre-existing - owner backfill skipped.");
     }
 
     // Step 3: add admin_flag generated column if missing
@@ -74,7 +74,7 @@ async function migrate() {
       );
       console.log("Step 3: Added 'admin_flag' generated column to users.");
     } else {
-      console.log("Step 3: 'admin_flag' column already exists – skipped.");
+      console.log("Step 3: 'admin_flag' column already exists - skipped.");
     }
 
     // Step 4: add uq_single_admin unique index if missing
@@ -90,7 +90,7 @@ async function migrate() {
       );
       console.log("Step 4: Added unique index 'uq_single_admin' on admin_flag.");
     } else {
-      console.log("Step 4: Unique index 'uq_single_admin' already exists – skipped.");
+      console.log("Step 4: Unique index 'uq_single_admin' already exists - skipped.");
     }
 
     console.log("Migration complete.");

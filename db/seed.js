@@ -1,5 +1,5 @@
 /**
- * db/seed.js – re-runnable seed script.
+ * db/seed.js - re-runnable seed script.
  * Usage: node db/seed.js   (or: npm run seed)
  *
  * 1. Applies schema.sql (creates DB + tables).
@@ -20,7 +20,7 @@ const mysql = require("mysql2/promise");
 const bcrypt = require("bcryptjs");
 const { ensureAdmin } = require("./ensureAdmin");
 
-// ─── Sample data (from init/data.js) ────────────────────────────────────────
+// --- Sample data (from init/data.js) ----------------------------------------
 const sampleListings = [
   {
     title: "Cozy Beachfront Cottage",
@@ -154,14 +154,14 @@ const sampleListings = [
   },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 async function applySchema(conn) {
   const schemaPath = path.join(__dirname, "schema.sql");
   const sql = fs.readFileSync(schemaPath, "utf8");
 
   // Split on ";" and run each non-empty statement.
-  // Skip CREATE DATABASE and USE statements — we are already connected
+  // Skip CREATE DATABASE and USE statements -- we are already connected
   // to the target database and the user may lack global CREATE privilege.
   const statements = sql
     .split(";")
@@ -174,7 +174,7 @@ async function applySchema(conn) {
   }
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// --- Main ---------------------------------------------------------------------
 
 async function seed() {
   // Connect directly to the wanderlust database.
@@ -191,16 +191,16 @@ async function seed() {
   });
 
   try {
-    console.log("Applying schema…");
+    console.log("Applying schema...");
     await applySchema(conn);
 
-    // ── Clear existing listings & reviews (users preserved) ───────────────
+    // -- Clear existing listings & reviews (users preserved) ---------------
     await conn.query("SET FOREIGN_KEY_CHECKS = 0");
     await conn.query("DELETE FROM reviews");
     await conn.query("DELETE FROM listings");
     await conn.query("SET FOREIGN_KEY_CHECKS = 1");
 
-    // ── Upsert seed user ──────────────────────────────────────────────────
+    // -- Upsert seed user --------------------------------------------------
     const seedUsername = "seeduser";
     const rawPassword = Math.random().toString(36).slice(-12);
     const passwordHash = await bcrypt.hash(rawPassword, 10);
@@ -234,7 +234,7 @@ async function seed() {
     console.log(`    password : ${rawPassword}`);
     console.log();
 
-    // ── Insert listings in a transaction ─────────────────────────────────
+    // -- Insert listings in a transaction ---------------------------------
     await conn.beginTransaction();
     try {
       for (const listing of sampleListings) {
