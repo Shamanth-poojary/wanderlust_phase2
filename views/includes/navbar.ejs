@@ -29,6 +29,8 @@
         <% } else { %>
         <span class="navbar-text me-3">
           Hello, <%= currentUser.username %>!
+          <% const roleLabels = { customer: "Customer", owner: "Property / Venue Owner", admin: "Admin" }; %>
+          <span class="badge bg-secondary ms-1"><%= roleLabels[currentUser.role] || currentUser.role %></span>
         </span>
         <a class="nav-link" href="/logout">Logout</a>
         <% } %>

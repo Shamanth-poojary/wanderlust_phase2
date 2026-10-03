@@ -5,6 +5,43 @@
     <form action="/signup" method="POST" novalidate class="needs-validation">
       <h2 class="mb-4 mt-4">Sign Up</h2>
 
+      <!-- ACCOUNT TYPE -->
+      <div class="mb-3">
+        <label class="form-label"><b>Account Type</b></label>
+        <div class="list-group">
+          <label id="role-customer-label" class="list-group-item d-flex gap-2">
+            <input
+              class="form-check-input flex-shrink-0"
+              type="radio"
+              id="role-customer"
+              name="role"
+              value="customer"
+              required
+              <%= selectedRole === "customer" ? "checked" : "" %>
+            />
+            <span>
+              <strong>Customer</strong>
+              <small class="d-block text-muted">Browse and book listings, leave reviews.</small>
+            </span>
+          </label>
+          <label id="role-owner-label" class="list-group-item d-flex gap-2">
+            <input
+              class="form-check-input flex-shrink-0"
+              type="radio"
+              id="role-owner"
+              name="role"
+              value="owner"
+              <%= selectedRole === "owner" ? "checked" : "" %>
+            />
+            <span>
+              <strong>Property / Venue Owner</strong>
+              <small class="d-block text-muted">List and manage hotels, properties and event venues.</small>
+            </span>
+          </label>
+        </div>
+        <div class="invalid-feedback">Please choose an account type.</div>
+      </div>
+
       <!-- USERNAME -->
       <div class="mb-3">
         <label for="username" class="form-label"><b>Username</b></label>

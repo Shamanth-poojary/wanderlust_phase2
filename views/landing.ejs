@@ -1,0 +1,66 @@
+<% layout("layouts/boilerplate") -%>
+
+<div class="container py-5">
+
+  <!-- Hero -->
+  <div class="text-center py-5">
+    <h1 class="display-4 fw-bold mb-3">Find your next stay or venue</h1>
+    <p class="lead text-muted mb-4">
+      WanderLust connects customers with verified hotel owners and event planners.
+    </p>
+    <div class="d-flex justify-content-center gap-3">
+      <a id="btn-login" href="/login" class="btn btn-primary btn-lg px-4">
+        <i class="fa-solid fa-right-to-bracket me-2"></i>Login
+      </a>
+      <a id="btn-register" href="/signup" class="btn btn-outline-primary btn-lg px-4">
+        <i class="fa-solid fa-user-plus me-2"></i>Register
+      </a>
+    </div>
+  </div>
+
+  <!-- Two cards -->
+  <div class="row g-4 mt-2">
+
+    <!-- Customer card -->
+    <div class="col-12 col-md-6">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body d-flex flex-column">
+          <h2 class="card-title h5 fw-semibold mb-2">
+            <i class="fa-solid fa-user me-2 text-primary"></i>For Customers
+          </h2>
+          <p class="card-text text-muted flex-grow-1">
+            Browse listings, check availability, make bookings and share reviews.
+          </p>
+          <a id="btn-register-customer" href="/signup?role=customer" class="btn btn-primary mt-3">
+            Register as Customer
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Owner card -->
+    <div class="col-12 col-md-6">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body d-flex flex-column">
+          <h2 class="card-title h5 fw-semibold mb-2">
+            <i class="fa-solid fa-building me-2 text-primary"></i>For Property and Venue Owners
+          </h2>
+          <p class="card-text text-muted flex-grow-1">
+            List hotels, properties and event venues and manage them in one place.
+          </p>
+          <a id="btn-register-owner" href="/signup?role=owner" class="btn btn-primary mt-3">
+            Register as Owner
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Already have an account -->
+  <p class="text-center mt-5 text-muted">
+    Already have an account?
+    <a href="/login">Login</a>
+  </p>
+
+</div>
