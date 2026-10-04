@@ -16,6 +16,22 @@ CREATE TABLE IF NOT EXISTS users (
   UNIQUE KEY uq_single_admin (admin_flag)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS owner_profile (
+  owner_id            INT UNSIGNED NOT NULL,
+  business_name       VARCHAR(100) NOT NULL,
+  business_type       ENUM('hotel_owner','property_owner','venue_owner','event_planner') NOT NULL,
+  phone               VARCHAR(20)  NULL,
+  verification_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  rejection_reason    VARCHAR(500) NULL,
+  verified_at         TIMESTAMP    NULL,
+  created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (owner_id),
+  CONSTRAINT fk_owner_profile_user FOREIGN KEY (owner_id)
+    REFERENCES users (user_id) ON DELETE CASCADE,
+  KEY idx_owner_profile_status (verification_status)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS listings (
   listing_id     INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   owner_id       INT UNSIGNED  NOT NULL,
