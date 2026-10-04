@@ -1,0 +1,133 @@
+<% layout("layouts/boilerplate") -%>
+
+<div class="row">
+  <div class="col-12 mt-4">
+    <h2 class="mb-4">Owner Applications</h2>
+
+    <!-- Filter tabs -->
+    <ul class="nav nav-tabs mb-4">
+      <li class="nav-item">
+        <a
+          class="nav-link <%= filter === 'pending' ? 'active' : '' %>"
+          href="/admin/owners?status=pending"
+        >
+          Pending <span class="badge bg-warning text-dark"><%= counts.pending %></span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          class="nav-link <%= filter === 'approved' ? 'active' : '' %>"
+          href="/admin/owners?status=approved"
+        >
+          Approved <span class="badge bg-success"><%= counts.approved %></span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          class="nav-link <%= filter === 'rejected' ? 'active' : '' %>"
+          href="/admin/owners?status=rejected"
+        >
+          Rejected <span class="badge bg-danger"><%= counts.rejected %></span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a
+          class="nav-link <%= filter === 'all' ? 'active' : '' %>"
+          href="/admin/owners?status=all"
+        >
+          All <span class="badge bg-secondary"><%= counts.all %></span>
+        </a>
+      </li>
+    </ul>
+
+    <% if (owners.length === 0) { %>
+    <div class="alert alert-info">
+      No owner applications found for this filter.
+    </div>
+    <% } else { %>
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Business Name</th>
+            <th>Business Type</th>
+            <th>Phone</th>
+            <th>Applied Date</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const owner of owners) { %>
+          <%
+            const badgeClass = {
+              pending:  "bg-warning text-dark",
+              approved: "bg-success",
+              rejected: "bg-danger",
+            }[owner.status] || "bg-secondary";
+            const statusLabel = OWNER_STATUS_LABELS[owner.status] || owner.status;
+            const appliedDate = owner.createdAt ? new Date(owner.createdAt).toISOString().slice(0, 10) : "N/A";
+          %>
+          <tr>
+            <td><strong><%= owner.username %></strong></td>
+            <td><%= owner.email %></td>
+            <td><%= owner.businessName %></td>
+            <td><%= BUSINESS_TYPES[owner.businessType] || owner.businessType %></td>
+            <td><%= owner.phone || "N/A" %></td>
+            <td><%= appliedDate %></td>
+            <td>
+              <span class="badge <%= badgeClass %>"><%= statusLabel %></span>
+              <% if (owner.status === "rejected" && owner.rejectionReason) { %>
+              <div class="small text-muted mt-1">
+                <strong>Reason:</strong> <%= owner.rejectionReason %>
+              </div>
+              <% } %>
+            </td>
+            <td>
+              <div class="d-flex flex-column gap-2">
+                <!-- Approve action -->
+                <form
+                  action="/admin/owners/<%= owner.userId %>/approve"
+                  method="POST"
+                  class="d-inline"
+                >
+                  <input type="hidden" name="filter" value="<%= filter %>" />
+                  <input type="hidden" name="status" value="<%= filter %>" />
+                  <button type="submit" class="btn btn-sm btn-success w-100">
+                    Approve
+                  </button>
+                </form>
+
+                <!-- Reject action -->
+                <form
+                  action="/admin/owners/<%= owner.userId %>/reject"
+                  method="POST"
+                  class="d-inline"
+                >
+                  <input type="hidden" name="filter" value="<%= filter %>" />
+                  <input type="hidden" name="status" value="<%= filter %>" />
+                  <div class="input-group input-group-sm">
+                    <input
+                      type="text"
+                      name="reason"
+                      class="form-control"
+                      placeholder="Reason (optional)"
+                      maxlength="500"
+                    />
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      Reject
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>
