@@ -228,6 +228,18 @@ async function seed() {
       console.log(`Seed user created (id=${seedUserId}).`);
     }
 
+    // Upsert approved owner profile for seeduser
+    await conn.query(
+      `INSERT INTO owner_profile (owner_id, business_name, business_type, phone, verification_status, verified_at)
+       VALUES (?, 'Seed Properties', 'property_owner', NULL, 'approved', NOW())
+       ON DUPLICATE KEY UPDATE
+         business_name = 'Seed Properties',
+         business_type = 'property_owner',
+         verification_status = 'approved',
+         verified_at = NOW()`,
+      [seedUserId]
+    );
+
     // Print credentials ONCE so the developer can log in
     console.log(`\n  Seed user credentials:`);
     console.log(`    username : ${seedUsername}`);
