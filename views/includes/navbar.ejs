@@ -18,12 +18,39 @@
       <!-- Left Links -->
       <div class="navbar-nav">
         <a class="nav-link active" aria-current="page" href="/listings">Home</a>
+        <% if (typeof canManageListings !== "undefined" && canManageListings) { %>
         <a class="nav-link" href="/listings/new">Add New Listings</a>
+        <% } %>
+        <% if (typeof currentUser !== "undefined" && currentUser && currentUser.role === "owner") { %>
+        <%
+          const statusKey = currentUser.ownerStatus || "none";
+          const statusLabels = {
+            pending:  "Pending approval",
+            approved: "Approved",
+            rejected: "Not approved",
+            none:     "Application not submitted",
+          };
+          const badgeClasses = {
+            pending:  "bg-warning text-dark",
+            approved: "bg-success",
+            rejected: "bg-danger",
+            none:     "bg-secondary",
+          };
+        %>
+        <a class="nav-link" href="/owner/status">
+          Owner Status <span class="badge <%= badgeClasses[statusKey] || 'bg-secondary' %> ms-1"><%= statusLabels[statusKey] || statusKey %></span>
+        </a>
+        <% } %>
+        <% if (typeof currentUser !== "undefined" && currentUser && currentUser.role === "admin") { %>
+        <a class="nav-link" href="/admin/owners">
+          Owner Applications<% if (typeof pendingOwnerCount === "number" && pendingOwnerCount > 0) { %> <span class="badge bg-danger ms-1"><%= pendingOwnerCount %></span><% } %>
+        </a>
+        <% } %>
       </div>
 
       <!-- Right Links -->
       <div class="navbar-nav ms-auto">
-        <% if (!currentUser) { %>
+        <% if (typeof currentUser === "undefined" || !currentUser) { %>
         <a class="nav-link" href="/signup">Register</a>
         <a class="nav-link" href="/login">Login</a>
         <% } else { %>

@@ -38,13 +38,14 @@ const sessionOptions = {
   saveUninitialized: true,
   cookie: {
     httpOnly: true,
+    sameSite: "lax",
     maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
   },
 };
 app.use(session(sessionOptions));
 app.use(flash());
 
-// Passport config – replaces passport-local-mongoose
+// Passport config - replaces passport-local-mongoose
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -55,7 +56,13 @@ passport.use(
       if (!user) return done(null, false, { message: "Incorrect username or password." });
       const ok = await bcrypt.compare(password, user.passwordHash);
       if (!ok) return done(null, false, { message: "Incorrect username or password." });
-      return done(null, { id: user.id, username: user.username, email: user.email, role: user.role });
+      return done(null, {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        ownerStatus: user.ownerStatus || null,
+      });
     } catch (err) {
       return done(err);
     }
@@ -70,11 +77,25 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
+const { isApprovedOwner } = require("./utils/permissions");
+const OwnerProfile        = require("./models/ownerProfile");
+
 // Flash / currentUser locals middleware
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   res.locals.success = req.flash("success");
-  res.locals.error = req.flash("error");
+  res.locals.error   = req.flash("error");
+  res.locals.info    = req.flash("info");
   res.locals.currentUser = req.user;
+  res.locals.canManageListings = isApprovedOwner(req.user);
+  res.locals.pendingOwnerCount = 0;
+  if (req.user && req.user.role === "admin") {
+    try {
+      const counts = await OwnerProfile.countsByStatus();
+      res.locals.pendingOwnerCount = counts.pending;
+    } catch (err) {
+      res.locals.pendingOwnerCount = 0;
+    }
+  }
   next();
 });
 
@@ -87,6 +108,12 @@ app.use("/listings", listingRoutes);
 
 const reviewRoutes = require("./routes/review");
 app.use("/listings/:id/reviews", reviewRoutes);
+
+const ownerRoutes = require("./routes/owner");
+app.use("/owner", ownerRoutes);
+
+const adminRoutes = require("./routes/admin");
+app.use("/admin", adminRoutes);
 
 const userRoutes = require("./routes/user");
 app.use("/", userRoutes);
