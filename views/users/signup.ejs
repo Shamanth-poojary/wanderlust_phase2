@@ -18,7 +18,7 @@
               name="role"
               value="customer"
               required
-              <%= activeRole === "customer" ? "checked" : "" %>
+              <% if (activeRole === "customer") { %>checked<% } %>
             />
             <span>
               <strong>Customer</strong>
@@ -32,7 +32,7 @@
               id="role-owner"
               name="role"
               value="owner"
-              <%= activeRole === "owner" ? "checked" : "" %>
+              <% if (activeRole === "owner") { %>checked<% } %>
             />
             <span>
               <strong>Property / Venue Owner</strong>
@@ -45,7 +45,8 @@
       </div>
 
       <!-- OWNER DETAILS BLOCK (shown only when owner is selected) -->
-      <div id="owner-fields" class="mb-3" style="<%= activeRole === 'owner' ? '' : 'display: none;' %>">
+      <% if (activeRole === "owner") { %>
+      <div id="owner-fields" class="mb-3">
         <div class="mb-3">
           <label for="business_name" class="form-label"><b>Business Name</b></label>
           <input
@@ -54,7 +55,7 @@
             name="business_name"
             placeholder="Enter business name"
             class="form-control"
-            <%= activeRole === "owner" ? "required" : "disabled" %>
+            required
             minlength="2"
             maxlength="100"
           />
@@ -63,7 +64,7 @@
 
         <div class="mb-3">
           <label for="business_type" class="form-label"><b>Business Type</b></label>
-          <select id="business_type" name="business_type" class="form-select" <%= activeRole === "owner" ? "required" : "disabled" %>>
+          <select id="business_type" name="business_type" class="form-select" required>
             <option value="">Select business type...</option>
             <% if (typeof BUSINESS_TYPES !== "undefined") { %>
               <% for (const [val, label] of Object.entries(BUSINESS_TYPES)) { %>
@@ -82,12 +83,57 @@
             name="phone"
             placeholder="+91XXXXXXXXXX"
             class="form-control"
-            <%= activeRole === "owner" ? "required" : "disabled" %>
+            required
             pattern="^\+?[0-9]{10,15}$"
           />
           <div class="invalid-feedback">Please enter a valid phone number (10-15 digits).</div>
         </div>
       </div>
+      <% } else { %>
+      <div id="owner-fields" class="mb-3" style="display: none;">
+        <div class="mb-3">
+          <label for="business_name" class="form-label"><b>Business Name</b></label>
+          <input
+            type="text"
+            id="business_name"
+            name="business_name"
+            placeholder="Enter business name"
+            class="form-control"
+            disabled
+            minlength="2"
+            maxlength="100"
+          />
+          <div class="invalid-feedback">Please enter a business name (2-100 characters).</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="business_type" class="form-label"><b>Business Type</b></label>
+          <select id="business_type" name="business_type" class="form-select" disabled>
+            <option value="">Select business type...</option>
+            <% if (typeof BUSINESS_TYPES !== "undefined") { %>
+              <% for (const [val, label] of Object.entries(BUSINESS_TYPES)) { %>
+                <option value="<%= val %>"><%= label %></option>
+              <% } %>
+            <% } %>
+          </select>
+          <div class="invalid-feedback">Please select a business type.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="phone" class="form-label"><b>Phone Number</b></label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            placeholder="+91XXXXXXXXXX"
+            class="form-control"
+            disabled
+            pattern="^\+?[0-9]{10,15}$"
+          />
+          <div class="invalid-feedback">Please enter a valid phone number (10-15 digits).</div>
+        </div>
+      </div>
+      <% } %>
 
       <!-- USERNAME -->
       <div class="mb-3">
