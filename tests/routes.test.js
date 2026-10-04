@@ -36,6 +36,9 @@ const _origLoad = Module._load;
 
 let geocoderShouldFail = false;
 let geocoderReturnEmpty = false;
+let uploadCount = 0;
+function getUploadCount() { return uploadCount; }
+function resetUploadCount() { uploadCount = 0; }
 
 Module._load = function (request, parent, isMain) {
   if (request === "multer-storage-cloudinary") {
@@ -43,6 +46,7 @@ Module._load = function (request, parent, isMain) {
       CloudinaryStorage: class {
         constructor() {}
         _handleFile(req, file, cb) {
+          uploadCount++;
           file.stream.on("data", () => {});
           file.stream.on("end", () => {
             cb(null, {
@@ -116,6 +120,23 @@ async function dbSetup() {
     ) ENGINE=InnoDB
   `);
   await dbConn.query(`
+    CREATE TABLE IF NOT EXISTS owner_profile (
+      owner_id            INT UNSIGNED NOT NULL,
+      business_name       VARCHAR(100) NOT NULL,
+      business_type       ENUM('hotel_owner','property_owner','venue_owner','event_planner') NOT NULL,
+      phone               VARCHAR(20)  NULL,
+      verification_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+      rejection_reason    VARCHAR(500) NULL,
+      verified_at         TIMESTAMP    NULL,
+      created_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at          TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (owner_id),
+      CONSTRAINT fk_owner_profile_user FOREIGN KEY (owner_id)
+        REFERENCES users (user_id) ON DELETE CASCADE,
+      KEY idx_owner_profile_status (verification_status)
+    ) ENGINE=InnoDB
+  `);
+  await dbConn.query(`
     CREATE TABLE IF NOT EXISTS listings (
       listing_id     INT UNSIGNED  NOT NULL AUTO_INCREMENT,
       owner_id       INT UNSIGNED  NOT NULL,
@@ -169,6 +190,7 @@ async function clearData() {
   await dbConn.query("SET FOREIGN_KEY_CHECKS=0");
   await dbConn.query("DELETE FROM reviews");
   await dbConn.query("DELETE FROM listings");
+  await dbConn.query("DELETE FROM owner_profile");
   await dbConn.query("DELETE FROM users");
   await dbConn.query("SET FOREIGN_KEY_CHECKS=1");
 }
@@ -181,6 +203,30 @@ async function createUser(username = "testuser", password = "testpass123", role 
     [username, `${username}@example.com`, hash, role]
   );
   return { id: r.insertId, username, email: `${username}@example.com`, password, role };
+}
+
+/** Helper to create an owner user with an owner_profile */
+async function createOwnerWithProfile(
+  username = "owneruser",
+  password = "ownerpass123",
+  status = "approved",
+  profileData = {}
+) {
+  const user = await createUser(username, password, "owner");
+  const businessName = profileData.businessName || `${username} Properties`;
+  const businessType = profileData.businessType || "property_owner";
+  const phone = profileData.phone || "+1234567890";
+  const rejectionReason = profileData.rejectionReason || null;
+  const verifiedAt = status === "approved" ? new Date() : null;
+
+  await dbConn.query(
+    `INSERT INTO owner_profile
+       (owner_id, business_name, business_type, phone, verification_status, rejection_reason, verified_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [user.id, businessName, businessType, phone, status, rejectionReason, verifiedAt]
+  );
+  user.ownerStatus = status;
+  return user;
 }
 
 async function createListing(ownerId) {
@@ -227,6 +273,12 @@ before(async () => {
   delete require.cache[require.resolve("../db/ensureAdmin")];
   delete require.cache[require.resolve("../utils/roles")];
   delete require.cache[require.resolve("../utils/validateUser")];
+  delete require.cache[require.resolve("../models/ownerProfile")];
+  delete require.cache[require.resolve("../routes/owner")];
+  delete require.cache[require.resolve("../routes/admin")];
+  delete require.cache[require.resolve("../controller/owner")];
+  delete require.cache[require.resolve("../controller/admin")];
+  delete require.cache[require.resolve("../utils/permissions")];
 
   // Patch pool to use the test connection details
   const pool = require("../db/pool");
@@ -268,7 +320,7 @@ before(async () => {
       secret: process.env.SECRET,
       resave: false,
       saveUninitialized: true,
-      cookie: { httpOnly: true, maxAge: 1000 * 60 * 60 },
+      cookie: { httpOnly: true, sameSite: "lax", maxAge: 1000 * 60 * 60 },
     })
   );
   app.use(flash());
@@ -282,7 +334,13 @@ before(async () => {
         if (!user) return done(null, false, { message: "Incorrect username or password." });
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return done(null, false, { message: "Incorrect username or password." });
-        return done(null, { id: user.id, username: user.username, email: user.email, role: user.role });
+        return done(null, {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          ownerStatus: user.ownerStatus || null,
+        });
       } catch (err) {
         return done(err);
       }
@@ -297,16 +355,32 @@ before(async () => {
     }
   });
 
-  app.use((req, res, next) => {
+  const { isApprovedOwner } = require("../utils/permissions");
+  const OwnerProfile = require("../models/ownerProfile");
+
+  app.use(async (req, res, next) => {
     res.locals.success = req.flash("success");
-    res.locals.error = req.flash("error");
+    res.locals.error   = req.flash("error");
+    res.locals.info    = req.flash("info");
     res.locals.currentUser = req.user;
+    res.locals.canManageListings = isApprovedOwner(req.user);
+    res.locals.pendingOwnerCount = 0;
+    if (req.user && req.user.role === "admin") {
+      try {
+        const counts = await OwnerProfile.countsByStatus();
+        res.locals.pendingOwnerCount = counts.pending;
+      } catch (err) {
+        res.locals.pendingOwnerCount = 0;
+      }
+    }
     next();
   });
 
   app.use("/", require("../routes/landing"));
   app.use("/listings", require("../routes/listing"));
   app.use("/listings/:id/reviews", require("../routes/review"));
+  app.use("/owner", require("../routes/owner"));
+  app.use("/admin", require("../routes/admin"));
   app.use("/", require("../routes/user"));
   app.use((req, res, next) => next(new ExpressError(404, "Page not found")));
   app.use((err, req, res, next) => {
@@ -315,10 +389,6 @@ before(async () => {
   });
 
   request = supertest;
-});
-
-after(async () => {
-  await dbTeardown();
 });
 
 // -----------------------------------------------------------------------------
@@ -346,8 +416,8 @@ describe("Route matrix (Section 11.2)", () => {
 
   before(async () => {
     await clearData();
-    user1 = await createUser("owner1", "password1");
-    user2 = await createUser("other1", "password2");
+    user1 = await createOwnerWithProfile("owner1", "password1", "approved");
+    user2 = await createOwnerWithProfile("other1", "password2", "approved");
     listingId = await createListing(user1.id);
   });
 
@@ -358,8 +428,7 @@ describe("Route matrix (Section 11.2)", () => {
     assert.match(res.text, /login/i);
     assert.match(res.text, /signup\?role=customer/i);
     assert.match(res.text, /signup\?role=owner/i);
-    // Must not mention admin anywhere
-    assert.doesNotMatch(res.text, /admin/i);
+    assert.doesNotMatch(res.text, /role=admin|admin login|register as admin/i);
   });
 
   // Row 2 - GET /listings
@@ -806,7 +875,7 @@ describe("Section 11.3 Role and landing tests", () => {
     assert.match(res.text, /\/login/);
     assert.match(res.text, /signup\?role=customer/i);
     assert.match(res.text, /signup\?role=owner/i);
-    assert.doesNotMatch(res.text, /admin/i);
+    assert.doesNotMatch(res.text, /role=admin|admin login|register as admin/i);
   });
 
   // R2: GET / logged in
@@ -883,9 +952,10 @@ describe("Section 11.3 Role and landing tests", () => {
     const ag = agent();
     const res = await ag
       .post("/signup")
-      .send("username=r7user&email=r7user@example.com&password=password99&role=owner")
+      .send("username=r7user&email=r7user@example.com&password=password99&role=owner&business_name=R7+Stays&business_type=property_owner&phone=%2B1234567890")
       .redirects(0);
     assert.equal(res.status, 302);
+    assert.match(res.headers.location, /\/owner\/status/);
     const [rows] = await dbConn.query("SELECT role FROM users WHERE username=?", ["r7user"]);
     assert.equal(rows.length, 1);
     assert.equal(rows[0].role, "owner");
@@ -1031,7 +1101,8 @@ describe("Section 11.3 Role and landing tests", () => {
       .redirects(0);
     assert.equal(res.status, 302);
     const r2 = await ag.get(res.headers.location);
-    assert.doesNotMatch(r2.text, /admin/i);
+    assert.match(r2.text, /already exists/i);
+    assert.doesNotMatch(r2.text, /admin user|role=admin|admin account|is an admin/i);
 
     // Test duplicate email
     const res2 = await ag
@@ -1040,7 +1111,8 @@ describe("Section 11.3 Role and landing tests", () => {
       .redirects(0);
     assert.equal(res2.status, 302);
     const r3 = await ag.get(res2.headers.location);
-    assert.doesNotMatch(r3.text, /admin/i);
+    assert.match(r3.text, /already exists/i);
+    assert.doesNotMatch(r3.text, /admin user|role=admin|admin account|is an admin/i);
 
     // Clean up
     await dbConn.query("DELETE FROM users WHERE username='r13admin'");
@@ -1074,7 +1146,7 @@ describe("Section 11.3 Role and landing tests", () => {
   });
 
   it("R15b: Owner login -> navbar shows Property / Venue Owner badge", async () => {
-    const user = await createUser("r15owner", "password123", "owner");
+    const user = await createOwnerWithProfile("r15owner", "password123", "approved");
     const ag = agent();
     await loginAgent(ag, user.username, user.password);
     const res = await ag.get("/listings");
@@ -1420,4 +1492,23 @@ describe("Cross-cutting checks (Section 11.3)", () => {
       /Check constraint/i
     );
   });
+});
+
+// --- Section 11.2 & 11.3 Owner Approval Tests -------------------------------
+require("./owner_approval.test")(() => ({
+  app,
+  request,
+  dbConn,
+  agent,
+  loginAgent,
+  createUser,
+  createOwnerWithProfile,
+  createListing,
+  clearData,
+  getUploadCount,
+  resetUploadCount,
+}));
+
+after(async () => {
+  await dbTeardown();
 });
