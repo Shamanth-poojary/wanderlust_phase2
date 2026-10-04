@@ -31,7 +31,8 @@
   </div>
 
   <% if (typeof currentUser !== 'undefined' && currentUser &&
-  currentUser.id === listing.owner.id) { %>
+  typeof canManageListings !== 'undefined' && canManageListings &&
+  listing.owner && currentUser.id === listing.owner.id) { %>
   <!-- EDIT / DELETE BUTTONS -->
   <div class="row mt-3">
     <div class="col-auto offset-2">

@@ -1,5 +1,6 @@
 const Listing = require("./models/listing");
-const Review = require("./models/review");
+const Review  = require("./models/review");
+const { isApprovedOwner: userIsApprovedOwner } = require("./utils/permissions");
 
 module.exports.isLoggedIn = (req, res, next) => {
   if (!req.isAuthenticated()) {
@@ -57,14 +58,46 @@ module.exports.isReviewOwner = async (req, res, next) => {
 };
 
 /**
+ * Middleware: only an approved owner may manage listings.
+ * Runs after isLoggedIn and BEFORE upload.single to prevent
+ * blocked users from triggering Cloudinary uploads.
+ */
+module.exports.isApprovedOwner = (req, res, next) => {
+  const user = req.user; // reloaded from DB on every request via deserializeUser
+  if (!user) {
+    req.session.redirectUrl = req.originalUrl;
+    req.flash("error", "You must be signed in first!");
+    return res.redirect("/login");
+  }
+
+  if (userIsApprovedOwner(user)) return next();
+
+  if (user.role !== "owner") {
+    req.flash("error", "Only approved property or venue owners can add or edit listings.");
+    return res.redirect("/listings");
+  }
+  const messages = {
+    pending:  "Your owner application is awaiting admin approval. You can add listings once it is approved.",
+    rejected: "Your owner application was not approved. See the details below.",
+  };
+  req.flash(
+    "error",
+    messages[user.ownerStatus] || "Please submit your business details to apply for owner approval."
+  );
+  return res.redirect("/owner/status");
+};
+
+/**
  * Middleware factory that restricts access to specific roles.
- * NOT applied to any route yet – reserved for a future phase.
+ * Used for owner and admin routes.
  *
  * Usage: router.get("/admin", requireRole("admin"), handler)
  */
 module.exports.requireRole = (...roles) => (req, res, next) => {
-  if (!req.isAuthenticated()) {
-    req.session.redirectUrl = req.originalUrl;
+  if (!req.isAuthenticated || !req.isAuthenticated() || !req.user) {
+    if (req.session) {
+      req.session.redirectUrl = req.originalUrl;
+    }
     req.flash("error", "You must be signed in first!");
     return res.redirect("/login");
   }
