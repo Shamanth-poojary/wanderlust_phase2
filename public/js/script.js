@@ -55,4 +55,35 @@
       }
     });
   });
+
+  // Toggle owner-fields block on signup form
+  const ownerFields = document.getElementById("owner-fields");
+  if (ownerFields) {
+    const ownerRadio = document.getElementById("role-owner");
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const inputs = ownerFields.querySelectorAll("input, select");
+
+    const updateOwnerFields = () => {
+      const isOwner = !!(ownerRadio && ownerRadio.checked);
+      if (isOwner) {
+        ownerFields.style.display = "";
+        inputs.forEach((input) => {
+          input.disabled = false;
+          input.required = true;
+        });
+      } else {
+        ownerFields.style.display = "none";
+        inputs.forEach((input) => {
+          input.disabled = true;
+          input.required = false;
+          input.classList.remove("is-invalid", "is-valid");
+        });
+      }
+    };
+
+    roleRadios.forEach((radio) => {
+      radio.addEventListener("change", updateOwnerFields);
+    });
+    updateOwnerFields();
+  }
 })();
