@@ -1,0 +1,110 @@
+<% layout("layouts/boilerplate") -%>
+
+<div class="row">
+  <div class="col-8 offset-2 mt-4">
+    <h2 class="mb-4">Owner Application Status</h2>
+
+    <%
+      const badgeClass = {
+        pending:  "bg-warning text-dark",
+        approved: "bg-success",
+        rejected: "bg-danger",
+        none:     "bg-secondary",
+      }[status] || "bg-secondary";
+      const statusLabel = OWNER_STATUS_LABELS[status] || status;
+    %>
+
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">Application Status</span>
+        <span class="badge <%= badgeClass %>"><%= statusLabel %></span>
+      </div>
+
+      <% if (status === "approved") { %>
+      <div class="card-body">
+        <p class="mb-1"><strong>Business:</strong> <%= profile.businessName %></p>
+        <p class="mb-1"><strong>Type:</strong> <%= BUSINESS_TYPES[profile.businessType] || profile.businessType %></p>
+        <p class="mb-1"><strong>Phone:</strong> <%= profile.phone || "N/A" %></p>
+        <p class="mb-3 text-success">Your account is approved. You can manage listings.</p>
+        <a href="/listings/new" class="btn btn-primary">Add New Listing</a>
+      </div>
+
+      <% } else if (status === "pending") { %>
+      <div class="card-body">
+        <p class="mb-1"><strong>Business:</strong> <%= profile.businessName %></p>
+        <p class="mb-1"><strong>Type:</strong> <%= BUSINESS_TYPES[profile.businessType] || profile.businessType %></p>
+        <p class="mb-1"><strong>Phone:</strong> <%= profile.phone || "N/A" %></p>
+        <p class="mt-2 text-muted">The admin has been notified of your application. You will be able to add listings once it is approved.</p>
+      </div>
+
+      <% } else { %>
+      <%/* status === "none" or "rejected" - show form */%>
+      <div class="card-body">
+
+        <% if (status === "rejected") { %>
+        <div class="alert alert-danger">
+          <strong>Your application was not approved.</strong>
+          <% if (profile && profile.rejectionReason) { %>
+          <p class="mb-0 mt-1">Reason: <%= profile.rejectionReason %></p>
+          <% } %>
+          <p class="mb-0 mt-1">You may update your details and re-apply below.</p>
+        </div>
+        <% } else { %>
+        <p class="text-muted">Please fill in your business details to apply for owner approval.</p>
+        <% } %>
+
+        <form action="/owner/application" method="POST" novalidate class="needs-validation">
+
+          <div class="mb-3">
+            <label for="business_name" class="form-label"><b>Business Name</b></label>
+            <input
+              type="text"
+              id="business_name"
+              name="business_name"
+              class="form-control"
+              placeholder="Your business name"
+              value="<%= profile ? profile.businessName : '' %>"
+              required
+              minlength="2"
+              maxlength="100"
+            />
+            <div class="invalid-feedback">Please enter a business name (2-100 characters).</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="business_type" class="form-label"><b>Business Type</b></label>
+            <select id="business_type" name="business_type" class="form-select" required>
+              <option value="">Select type...</option>
+              <% for (const [val, label] of Object.entries(BUSINESS_TYPES)) { %>
+              <option value="<%= val %>" <%= (profile && profile.businessType === val) ? "selected" : "" %>>
+                <%= label %>
+              </option>
+              <% } %>
+            </select>
+            <div class="invalid-feedback">Please select a business type.</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="phone" class="form-label"><b>Phone Number</b></label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              class="form-control"
+              placeholder="+91XXXXXXXXXX"
+              value="<%= profile ? (profile.phone || '') : '' %>"
+              required
+              pattern="^\+?[0-9]{10,15}$"
+            />
+            <div class="invalid-feedback">Please enter a valid phone number (10-15 digits).</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <%= status === "rejected" ? "Re-apply" : "Submit Application" %>
+          </button>
+        </form>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</div>
