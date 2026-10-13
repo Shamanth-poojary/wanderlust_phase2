@@ -1,0 +1,269 @@
+<% layout("dashboard/layout") -%>
+
+<%
+  const isMainAdmin = (targetUser.username === mainAdminUsername || (targetUser.role === 'admin' && targetUser.id === 1));
+  const isSelf = (currentUser && targetUser.id === currentUser.id);
+  const roleBadge = {
+    customer: 'bg-info text-dark',
+    owner:    'bg-primary',
+    admin:    'bg-danger',
+  }[targetUser.role] || 'bg-secondary';
+%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex align-items-center gap-2">
+    <a href="/dashboard/users" class="btn btn-sm btn-outline-secondary">
+      <i class="fa-solid fa-arrow-left me-1"></i>Back to Users
+    </a>
+    <h3 class="fw-bold mb-0">User Profile: <%= targetUser.username %></h3>
+  </div>
+
+  <% if (!isMainAdmin && !isSelf) { %>
+    <form
+      action="/dashboard/users/<%= targetUser.id %>?_method=DELETE"
+      method="POST"
+      onsubmit="return confirm('Are you sure you want to permanently delete user <%= targetUser.username %>? This action cannot be undone.');"
+    >
+      <button type="submit" class="btn btn-sm btn-outline-danger">
+        <i class="fa-solid fa-trash me-1"></i>Delete User Account
+      </button>
+    </form>
+  <% } %>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Profile Summary -->
+  <div class="col-12 col-lg-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-bottom py-3">
+        <h5 class="card-title mb-0 fw-bold">
+          <i class="fa-solid fa-user me-2 text-primary"></i>Account Information
+        </h5>
+      </div>
+      <div class="card-body p-4 text-center">
+        <!-- Avatar -->
+        <div class="mb-3">
+          <% if (targetUser.profilePictureUrl) { %>
+            <img
+              src="<%= targetUser.profilePictureUrl %>"
+              alt="<%= targetUser.username %>"
+              class="rounded-circle border shadow-sm"
+              style="width: 100px; height: 100px; object-fit: cover;"
+            />
+          <% } else { %>
+            <div
+              class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center shadow-sm"
+              style="width: 100px; height: 100px; font-size: 2.5rem; font-weight: 600;"
+            >
+              <%= targetUser.username.charAt(0).toUpperCase() %>
+            </div>
+          <% } %>
+        </div>
+
+        <h4 class="fw-bold mb-1"><%= targetUser.username %></h4>
+        <p class="text-muted mb-2"><%= targetUser.email %></p>
+
+        <div>
+          <span class="badge <%= roleBadge %> fs-6 px-3 py-1">
+            <%= targetUser.role %>
+          </span>
+          <% if (isMainAdmin) { %>
+            <span class="badge bg-warning text-dark fs-6 px-2 py-1 ms-1">Super Admin</span>
+          <% } %>
+        </div>
+
+        <hr />
+
+        <ul class="list-group list-group-flush text-start">
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted"><i class="fa-solid fa-phone me-2"></i>Phone:</span>
+            <span class="fw-semibold"><%= targetUser.phone || 'Not provided' %></span>
+          </li>
+          <li class="list-group-item px-0">
+            <span class="text-muted d-block mb-1"><i class="fa-solid fa-comment-dots me-2"></i>Bio:</span>
+            <p class="mb-0 text-secondary small fst-italic">
+              <%= targetUser.bio || 'No bio provided.' %>
+            </p>
+          </li>
+          <li class="list-group-item d-flex justify-content-between px-0">
+            <span class="text-muted"><i class="fa-solid fa-calendar me-2"></i>Registered:</span>
+            <span class="fw-semibold">
+              <%= targetUser.createdAt ? new Date(targetUser.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : 'N/A' %>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Role-specific info & decisions -->
+  <div class="col-12 col-lg-7">
+    <% if (targetUser.role === 'owner') { %>
+      <!-- Owner Profile Details & Actions -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0 fw-bold">
+            <i class="fa-solid fa-briefcase me-2 text-primary"></i>Owner Application Details
+          </h5>
+          <%
+            const stBadge = {
+              pending:  'bg-warning text-dark',
+              approved: 'bg-success',
+              rejected: 'bg-danger',
+            }[targetUser.ownerStatus] || 'bg-secondary';
+          %>
+          <span class="badge <%= stBadge %> fs-6">
+            <%= targetUser.ownerStatus || 'No Application' %>
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <% if (ownerProfile) { %>
+            <div class="row g-3 mb-3">
+              <div class="col-sm-6">
+                <span class="text-muted small d-block">Business Name</span>
+                <span class="fw-bold"><%= ownerProfile.businessName %></span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted small d-block">Business Type</span>
+                <span class="fw-bold"><%= ownerProfile.businessType %></span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted small d-block">Business Phone</span>
+                <span class="fw-bold"><%= ownerProfile.phone || 'N/A' %></span>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted small d-block">Verified At</span>
+                <span class="fw-bold">
+                  <%= ownerProfile.verifiedAt ? new Date(ownerProfile.verifiedAt).toLocaleDateString() : 'Pending' %>
+                </span>
+              </div>
+            </div>
+
+            <% if (ownerProfile.rejectionReason) { %>
+              <div class="alert alert-danger mb-3">
+                <strong>Rejection Reason:</strong> <%= ownerProfile.rejectionReason %>
+              </div>
+            <% } %>
+
+            <!-- Quick Approval / Rejection Actions -->
+            <div class="border-top pt-3 d-flex flex-wrap gap-2">
+              <form action="/dashboard/approvals/<%= targetUser.id %>/approve" method="POST" class="d-inline">
+                <input type="hidden" name="filter" value="all" />
+                <button type="submit" class="btn btn-sm btn-success">
+                  <i class="fa-solid fa-check me-1"></i>Approve Owner
+                </button>
+              </form>
+
+              <form action="/dashboard/approvals/<%= targetUser.id %>/reject" method="POST" class="d-inline flex-grow-1">
+                <input type="hidden" name="filter" value="all" />
+                <div class="input-group input-group-sm">
+                  <input
+                    type="text"
+                    name="reason"
+                    class="form-control"
+                    placeholder="Rejection reason..."
+                    maxlength="500"
+                  />
+                  <button type="submit" class="btn btn-outline-danger">Reject</button>
+                </div>
+              </form>
+            </div>
+          <% } else { %>
+            <p class="text-muted mb-0">No owner business profile registered for this account.</p>
+          <% } %>
+        </div>
+      </div>
+    <% } else if (targetUser.role === 'customer') { %>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h5 class="card-title mb-0 fw-bold">
+            <i class="fa-solid fa-heart me-2 text-danger"></i>Customer Activity
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <p class="mb-2"><strong>Wishlisted Listings:</strong> <%= wishlistCount %> items saved.</p>
+          <p class="text-muted mb-0">Customer booking logs will be displayed here once booking engine is activated.</p>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h5 class="card-title mb-0 fw-bold">
+            <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Administrator Details
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <p class="text-muted mb-0">This account has administrative privileges across WanderLust.</p>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Owner Listings Section -->
+<% if (targetUser.role === 'owner') { %>
+  <div class="card border-0 shadow-sm overflow-hidden mb-4">
+    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+      <h5 class="card-title mb-0 fw-bold">
+        <i class="fa-solid fa-hotel me-2 text-primary"></i>Listings Owned (<%= listings ? listings.length : 0 %>)
+      </h5>
+    </div>
+    <% if (!listings || listings.length === 0) { %>
+      <div class="card-body text-center py-4 text-muted">
+        This owner has not created any listings yet.
+      </div>
+    <% } else { %>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 70px;">Image</th>
+              <th>Title</th>
+              <th>Location</th>
+              <th>Price</th>
+              <th class="text-end" style="min-width: 180px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (let l of listings) { %>
+              <tr>
+                <td>
+                  <img
+                    src="<%= l.image.url %>"
+                    alt="<%= l.title %>"
+                    class="rounded"
+                    style="width: 60px; height: 45px; object-fit: cover;"
+                  />
+                </td>
+                <td class="fw-bold"><%= l.title %></td>
+                <td class="text-muted"><%= l.location %>, <%= l.country %></td>
+                <td>₹ <%= l.price ? l.price.toLocaleString("en-IN") : 'N/A' %></td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a href="/listings/<%= l.id %>" class="btn btn-outline-secondary" title="View Listing">
+                      <i class="fa-solid fa-eye"></i>
+                    </a>
+                    <a href="/listings/<%= l.id %>/edit" class="btn btn-outline-primary" title="Edit Listing">
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </a>
+                    <!-- Admin Delete Listing -->
+                    <form
+                      action="/dashboard/users/<%= targetUser.id %>/listings/<%= l.id %>?_method=DELETE"
+                      method="POST"
+                      class="d-inline"
+                      onsubmit="return confirm('Permanently delete this listing and its image from Cloudinary?');"
+                    >
+                      <button type="submit" class="btn btn-outline-danger" title="Delete Listing">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>

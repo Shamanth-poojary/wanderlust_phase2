@@ -21,6 +21,9 @@
         <% if (typeof canManageListings !== "undefined" && canManageListings) { %>
         <a class="nav-link" href="/listings/new">Add New Listings</a>
         <% } %>
+        <% if (typeof currentUser !== "undefined" && currentUser) { %>
+        <a class="nav-link" href="/dashboard"><i class="fa-solid fa-gauge me-1"></i>Dashboard</a>
+        <% } %>
         <% if (typeof currentUser !== "undefined" && currentUser && currentUser.role === "owner") { %>
         <%
           const statusKey = currentUser.ownerStatus || "none";
@@ -42,20 +45,28 @@
         </a>
         <% } %>
         <% if (typeof currentUser !== "undefined" && currentUser && currentUser.role === "admin") { %>
-        <a class="nav-link" href="/admin/owners">
+        <a class="nav-link" href="/dashboard/approvals">
           Owner Applications<% if (typeof pendingOwnerCount === "number" && pendingOwnerCount > 0) { %> <span class="badge bg-danger ms-1"><%= pendingOwnerCount %></span><% } %>
         </a>
         <% } %>
       </div>
 
       <!-- Right Links -->
-      <div class="navbar-nav ms-auto">
+      <div class="navbar-nav ms-auto align-items-center">
         <% if (typeof currentUser === "undefined" || !currentUser) { %>
         <a class="nav-link" href="/signup">Register</a>
         <a class="nav-link" href="/login">Login</a>
         <% } else { %>
-        <span class="navbar-text me-3">
-          Hello, <%= currentUser.username %>!
+        <span class="navbar-text me-3 d-flex align-items-center">
+          <% if (currentUser.profilePictureUrl) { %>
+            <img
+              src="<%= currentUser.profilePictureUrl %>"
+              alt="<%= currentUser.username %>"
+              class="rounded-circle me-2 border"
+              style="width: 26px; height: 26px; object-fit: cover;"
+            />
+          <% } %>
+          <span>Hello, <%= currentUser.username %>!</span>
           <% const roleLabels = { customer: "Customer", owner: "Property / Venue Owner", admin: "Admin" }; %>
           <span class="badge bg-secondary ms-1"><%= roleLabels[currentUser.role] || currentUser.role %></span>
         </span>

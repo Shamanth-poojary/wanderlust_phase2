@@ -231,6 +231,32 @@ async function update(
 }
 
 /**
+ * findByOwnerId – returns all listings owned by a specific user.
+ */
+async function findByOwnerId(ownerId) {
+  const nid = parseId(ownerId);
+  if (!nid) return [];
+  const [rows] = await pool.execute(
+    `SELECT listing_id, title, description, price, location, country,
+            image_url, image_filename, created_at
+     FROM listings
+     WHERE owner_id = ?
+     ORDER BY created_at DESC`,
+    [nid]
+  );
+  return rows.map((r) => ({
+    id: r.listing_id,
+    title: r.title,
+    description: r.description,
+    price: r.price,
+    location: r.location,
+    country: r.country,
+    image: { url: r.image_url, filename: r.image_filename },
+    createdAt: r.created_at,
+  }));
+}
+
+/**
  * remove – deletes a listing (cascades to reviews).
  * Returns affected rows count.
  */
@@ -244,5 +270,32 @@ async function remove(id) {
   return result.affectedRows;
 }
 
-module.exports = { findAll, findByIdWithDetails, findById, getOwnerId, create, update, remove };
+/**
+ * deleteWithImage – cleans up Cloudinary image and removes listing.
+ */
+async function deleteWithImage(id) {
+  const nid = parseId(id);
+  if (!nid) return 0;
+  const [rows] = await pool.execute(
+    "SELECT image_filename FROM listings WHERE listing_id = ? LIMIT 1",
+    [nid]
+  );
+  if (rows[0] && rows[0].image_filename) {
+    const { deleteCloudinaryAsset } = require("../cloudConfig");
+    await deleteCloudinaryAsset(rows[0].image_filename);
+  }
+  return await remove(nid);
+}
+
+module.exports = {
+  findAll,
+  findByIdWithDetails,
+  findById,
+  findByOwnerId,
+  getOwnerId,
+  create,
+  update,
+  remove,
+  deleteWithImage,
+};
 

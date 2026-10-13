@@ -6,12 +6,22 @@ const { saveRedirectUrl } = require("../middleware");
 const { validateUser } = require("../utils/validateUser");
 const wrapAsync = require("../utils/wrapAsync");
 const UserController = require("../controller/user.js");
+const { uploadAvatar } = require("../cloudConfig");
+
+const handleOptionalAvatar = (req, res, next) => {
+  uploadAvatar.single("profile_picture")(req, res, (err) => {
+    if (err) {
+      req.avatarUploadError = err.message || "Avatar upload failed.";
+    }
+    next();
+  });
+};
 
 //signup routes
 router
   .route("/signup")
   .get(UserController.renderSignup)
-  .post(validateUser, wrapAsync(UserController.signupUser));
+  .post(handleOptionalAvatar, validateUser, wrapAsync(UserController.signupUser));
 
 router
   .route("/login")

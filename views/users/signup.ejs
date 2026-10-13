@@ -3,7 +3,7 @@
 
 <div class="row">
   <div class="col-8 offset-2">
-    <form action="/signup" method="POST" novalidate class="needs-validation">
+    <form action="/signup" method="POST" enctype="multipart/form-data" novalidate class="needs-validation">
       <h2 class="mb-4 mt-4">Sign Up</h2>
 
       <!-- ACCOUNT TYPE -->
@@ -175,6 +175,19 @@
           required
         />
         <div class="invalid-feedback">Please enter a password.</div>
+      </div>
+
+      <!-- PROFILE PICTURE (OPTIONAL) -->
+      <div class="mb-3">
+        <label for="profile_picture" class="form-label"><b>Profile Picture (Optional)</b></label>
+        <input
+          type="file"
+          id="profile_picture"
+          name="profile_picture"
+          class="form-control"
+          accept="image/*"
+        />
+        <div class="form-text">Optional. Max 2 MB (JPEG, PNG, WebP).</div>
       </div>
 
       <button type="submit" class="btn btn-primary">Sign Up</button>

@@ -106,13 +106,17 @@ async function dbSetup() {
   // Create tables - mirrors updated schema.sql including role, admin_flag, uq_single_admin
   await dbConn.query(`
     CREATE TABLE IF NOT EXISTS users (
-      user_id       INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-      username      VARCHAR(50)   NOT NULL,
-      email         VARCHAR(255)  NOT NULL,
-      password_hash VARCHAR(255)  NOT NULL,
-      role          ENUM('customer','owner','admin') NOT NULL DEFAULT 'customer',
-      admin_flag    TINYINT GENERATED ALWAYS AS (IF(role = 'admin', 1, NULL)) STORED,
-      created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      user_id                   INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+      username                  VARCHAR(50)   NOT NULL,
+      email                     VARCHAR(255)  NOT NULL,
+      password_hash             VARCHAR(255)  NOT NULL,
+      role                      ENUM('customer','owner','admin') NOT NULL DEFAULT 'customer',
+      admin_flag                TINYINT GENERATED ALWAYS AS (IF(role = 'admin', 1, NULL)) STORED,
+      profile_picture_url       VARCHAR(500)  NULL,
+      profile_picture_public_id VARCHAR(255)  NULL,
+      phone                     VARCHAR(20)   NULL,
+      bio                       VARCHAR(300)  NULL,
+      created_at                TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id),
       UNIQUE KEY uq_users_username (username),
       UNIQUE KEY uq_users_email (email),
@@ -174,6 +178,22 @@ async function dbSetup() {
       KEY idx_reviews_listing (listing_id)
     ) ENGINE=InnoDB
   `);
+  await dbConn.query(`
+    CREATE TABLE IF NOT EXISTS wishlists (
+      id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      user_id    INT UNSIGNED NOT NULL,
+      listing_id INT UNSIGNED NOT NULL,
+      created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      UNIQUE KEY uq_user_listing (user_id, listing_id),
+      CONSTRAINT fk_wishlist_user FOREIGN KEY (user_id)
+        REFERENCES users (user_id) ON DELETE CASCADE,
+      CONSTRAINT fk_wishlist_listing FOREIGN KEY (listing_id)
+        REFERENCES listings (listing_id) ON DELETE CASCADE,
+      KEY idx_wishlists_user (user_id),
+      KEY idx_wishlists_listing (listing_id)
+    ) ENGINE=InnoDB
+  `);
 }
 
 async function dbTeardown() {
@@ -188,6 +208,7 @@ async function dbTeardown() {
 
 async function clearData() {
   await dbConn.query("SET FOREIGN_KEY_CHECKS=0");
+  await dbConn.query("DELETE FROM wishlists");
   await dbConn.query("DELETE FROM reviews");
   await dbConn.query("DELETE FROM listings");
   await dbConn.query("DELETE FROM owner_profile");
@@ -279,6 +300,11 @@ before(async () => {
   delete require.cache[require.resolve("../controller/owner")];
   delete require.cache[require.resolve("../controller/admin")];
   delete require.cache[require.resolve("../utils/permissions")];
+  delete require.cache[require.resolve("../routes/dashboard")];
+  delete require.cache[require.resolve("../routes/wishlist")];
+  delete require.cache[require.resolve("../controller/dashboard")];
+  delete require.cache[require.resolve("../controller/wishlist")];
+  delete require.cache[require.resolve("../models/wishlist")];
 
   // Patch pool to use the test connection details
   const pool = require("../db/pool");
@@ -381,6 +407,8 @@ before(async () => {
   app.use("/listings/:id/reviews", require("../routes/review"));
   app.use("/owner", require("../routes/owner"));
   app.use("/admin", require("../routes/admin"));
+  app.use("/dashboard", require("../routes/dashboard"));
+  app.use("/wishlist", require("../routes/wishlist"));
   app.use("/", require("../routes/user"));
   app.use((req, res, next) => next(new ExpressError(404, "Page not found")));
   app.use((err, req, res, next) => {
@@ -1507,6 +1535,19 @@ require("./owner_approval.test")(() => ({
   clearData,
   getUploadCount,
   resetUploadCount,
+}));
+
+// --- Phase 4 Role-Based User Dashboard Tests --------------------------------
+require("./dashboard_phase4.test")(() => ({
+  app,
+  request,
+  dbConn,
+  agent,
+  loginAgent,
+  createUser,
+  createOwnerWithProfile,
+  createListing,
+  clearData,
 }));
 
 after(async () => {

@@ -4,12 +4,18 @@ const mbxGeocoding = require("@mapbox/mapbox-sdk/services/geocoding");
 const mapToken = process.env.MAP_TOKEN;
 const geocodingClient = mbxGeocoding({ accessToken: mapToken });
 
+const Wishlist = require("../models/wishlist");
+
 // =======================
 // INDEX
 // =======================
 module.exports.index = async (req, res) => {
   const alllistings = await Listing.findAll();
-  res.render("listings/index.ejs", { alllistings });
+  let wishlistListingIds = new Set();
+  if (req.user) {
+    wishlistListingIds = await Wishlist.getUserWishlistListingIds(req.user.id);
+  }
+  res.render("listings/index.ejs", { alllistings, wishlistListingIds });
 };
 
 // =======================
@@ -32,7 +38,12 @@ module.exports.showListing = async (req, res) => {
     return res.redirect("/listings");
   }
 
-  res.render("listings/show.ejs", { listing });
+  let isWishlisted = false;
+  if (req.user) {
+    isWishlisted = await Wishlist.isWishlisted(req.user.id, id);
+  }
+
+  res.render("listings/show.ejs", { listing, isWishlisted });
 };
 
 // =======================

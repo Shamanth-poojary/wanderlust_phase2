@@ -115,6 +115,12 @@ app.use("/owner", ownerRoutes);
 const adminRoutes = require("./routes/admin");
 app.use("/admin", adminRoutes);
 
+const dashboardRoutes = require("./routes/dashboard");
+app.use("/dashboard", dashboardRoutes);
+
+const wishlistRoutes = require("./routes/wishlist");
+app.use("/wishlist", wishlistRoutes);
+
 const userRoutes = require("./routes/user");
 app.use("/", userRoutes);
 
@@ -140,7 +146,24 @@ pool
       console.error("FATAL: ensureAdmin failed:", err.message);
       process.exit(1);
     }
-    app.listen(8080, () => console.log("Server started on port 8080"));
+    const startServer = (port) => {
+      const server = app.listen(port, () => {
+        console.log(`Server successfully started on port ${port} (http://localhost:${port})`);
+      });
+      server.on("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          const nextPort = Number(port) === 8080 ? 8081 : Number(port) + 1;
+          console.warn(`Port ${port} is currently in use. Automatically starting on port ${nextPort}...`);
+          startServer(nextPort);
+        } else {
+          console.error("FATAL server error:", err);
+          process.exit(1);
+        }
+      });
+    };
+
+    const initialPort = Number(process.env.PORT) || 8080;
+    startServer(initialPort);
   })
   .catch((err) => {
     console.error("FATAL: Cannot connect to MySQL:", err.message);

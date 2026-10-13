@@ -1,29 +1,98 @@
 <% layout("layouts/boilerplate") -%>
 <body>
-  <h3>all listings</h3>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>All Listings</h3>
+  </div>
+
   <div
     class="row row-cols-lg-3 row-cols-md-2 row-cols-sm-1 justify-content-center"
   >
-    <% for (let listing of alllistings) {%>
-    <a
-      href="/listings/<%=listing.id%>"
-      style="text-decoration: none; color: black"
-      ><div class="card col listing-card">
-        <img
-          src="<%=listing.image.url%>"
-          class="card-img-top"
-          alt="listing_image"
-        />
-        <div class="card-img-overlay"></div>
-        <div class="card-body">
-          <p class="card-text">
-            <b><%= listing.title %></b> <br />
-            &#8377;<%= listing.price ? listing.price.toLocaleString("en-in") :
-            'N/A' %>/night
-          </p>
-        </div>
-      </div></a
-    >
-    <%}%>
+    <% for (let listing of alllistings) { %>
+    <%
+      const isSaved = (typeof wishlistListingIds !== "undefined" && wishlistListingIds && wishlistListingIds.has(listing.id));
+    %>
+    <div class="col mb-4">
+      <div class="card listing-card position-relative h-100 shadow-sm">
+        <% if (typeof currentUser !== "undefined" && currentUser) { %>
+        <button
+          type="button"
+          class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 rounded-circle wishlist-btn shadow-sm"
+          style="z-index: 10; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"
+          onclick="toggleWishlist(event, '<%= listing.id %>', this)"
+          title="<%= isSaved ? 'Remove from Wishlist' : 'Add to Wishlist' %>"
+        >
+          <i class="<%= isSaved ? 'fa-solid fa-heart text-danger' : 'fa-regular fa-heart' %>"></i>
+        </button>
+        <% } else { %>
+        <a
+          href="/login"
+          class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 rounded-circle shadow-sm"
+          style="z-index: 10; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;"
+          title="Login to add to Wishlist"
+        >
+          <i class="fa-regular fa-heart"></i>
+        </a>
+        <% } %>
+
+        <a
+          href="/listings/<%= listing.id %>"
+          style="text-decoration: none; color: black;"
+        >
+          <img
+            src="<%= listing.image.url %>"
+            class="card-img-top"
+            alt="listing_image"
+            style="height: 20rem; object-fit: cover;"
+          />
+          <div class="card-body">
+            <p class="card-text">
+              <b><%= listing.title %></b> <br />
+              &#8377;<%= listing.price ? listing.price.toLocaleString("en-in") : 'N/A' %>/night
+            </p>
+          </div>
+        </a>
+      </div>
+    </div>
+    <% } %>
   </div>
+
+  <script>
+    async function toggleWishlist(event, listingId, btn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const icon = btn.querySelector("i");
+      const isSaved = icon.classList.contains("fa-solid");
+      const method = isSaved ? "DELETE" : "POST";
+
+      try {
+        const res = await fetch(`/wishlist/${listingId}`, {
+          method: method,
+          headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const data = await res.json();
+        if (data && data.success) {
+          if (data.wishlisted) {
+            icon.classList.remove("fa-regular");
+            icon.classList.add("fa-solid", "fa-heart", "text-danger");
+            btn.title = "Remove from Wishlist";
+          } else {
+            icon.classList.remove("fa-solid", "text-danger");
+            icon.classList.add("fa-regular", "fa-heart");
+            btn.title = "Add to Wishlist";
+          }
+        }
+      } catch (err) {
+        console.error("Error toggling wishlist:", err);
+      }
+    }
+  </script>
 </body>

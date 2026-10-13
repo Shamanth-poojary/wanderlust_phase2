@@ -16,6 +16,12 @@ module.exports.renderSignup = (req, res) => {
 module.exports.signupUser = async (req, res, next) => {
   // req.body has already been validated and sanitised by validateUser middleware
   const { username, email, password, role, business_name, business_type, phone } = req.body;
+  const profilePictureUrl = req.file ? req.file.path : null;
+  const profilePicturePublicId = req.file ? req.file.filename : null;
+
+  if (req.avatarUploadError) {
+    req.flash("info", `Profile picture upload skipped: ${req.avatarUploadError}`);
+  }
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
@@ -25,8 +31,23 @@ module.exports.signupUser = async (req, res, next) => {
       const conn = await pool.getConnection();
       try {
         await conn.beginTransaction();
-        const user = await User.create({ username, email, passwordHash, role: "owner" }, conn);
-        await OwnerProfile.create(user.id, { businessName: business_name, businessType: business_type, phone }, conn);
+        const user = await User.create(
+          {
+            username,
+            email,
+            passwordHash,
+            role: "owner",
+            profilePictureUrl,
+            profilePicturePublicId,
+            phone,
+          },
+          conn
+        );
+        await OwnerProfile.create(
+          user.id,
+          { businessName: business_name, businessType: business_type, phone },
+          conn
+        );
         await conn.commit();
         // Log the owner in
         req.login({ id: user.id, username, email, role: "owner", ownerStatus: "pending" }, (err) => {
@@ -42,7 +63,14 @@ module.exports.signupUser = async (req, res, next) => {
       }
     } else {
       // Customer: simple insert
-      const user = await User.create({ username, email, passwordHash, role });
+      const user = await User.create({
+        username,
+        email,
+        passwordHash,
+        role,
+        profilePictureUrl,
+        profilePicturePublicId,
+      });
       req.login({ id: user.id, username, email, role, ownerStatus: null }, (err) => {
         if (err) return next(err);
         req.flash("success", `Welcome to Wanderlust! You are registered as ${ROLE_LABELS[role]}.`);

@@ -1,0 +1,147 @@
+<% layout("dashboard/layout") -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">
+      <i class="fa-solid fa-user-check me-2 text-primary"></i>Owner Approvals
+    </h3>
+    <p class="text-muted mb-0">Review property and venue owner registration applications.</p>
+  </div>
+</div>
+
+<!-- Filter Tabs -->
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <a
+      class="nav-link <%= filter === 'pending' ? 'active fw-bold' : '' %>"
+      href="/dashboard/approvals?status=pending"
+    >
+      Pending <span class="badge bg-warning text-dark ms-1"><%= counts.pending %></span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a
+      class="nav-link <%= filter === 'approved' ? 'active fw-bold' : '' %>"
+      href="/dashboard/approvals?status=approved"
+    >
+      Approved <span class="badge bg-success ms-1"><%= counts.approved %></span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a
+      class="nav-link <%= filter === 'rejected' ? 'active fw-bold' : '' %>"
+      href="/dashboard/approvals?status=rejected"
+    >
+      Rejected <span class="badge bg-danger ms-1"><%= counts.rejected %></span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a
+      class="nav-link <%= filter === 'all' ? 'active fw-bold' : '' %>"
+      href="/dashboard/approvals?status=all"
+    >
+      All <span class="badge bg-secondary ms-1"><%= counts.all %></span>
+    </a>
+  </li>
+</ul>
+
+<% if (!owners || owners.length === 0) { %>
+  <div class="card border-0 shadow-sm text-center py-5">
+    <div class="card-body">
+      <i class="fa-solid fa-clipboard-check text-muted display-4 mb-3"></i>
+      <h5 class="fw-bold text-dark">No owner applications found</h5>
+      <p class="text-muted">There are no owner registrations matching the "<%= filter %>" filter.</p>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card border-0 shadow-sm overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Applicant</th>
+            <th>Business Details</th>
+            <th>Contact</th>
+            <th>Applied Date</th>
+            <th>Status</th>
+            <th class="text-end" style="min-width: 220px;">Decision Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const owner of owners) { %>
+            <%
+              const badgeClass = {
+                pending:  "bg-warning text-dark",
+                approved: "bg-success",
+                rejected: "bg-danger",
+              }[owner.status] || "bg-secondary";
+              const statusLabel = (typeof OWNER_STATUS_LABELS !== 'undefined' && OWNER_STATUS_LABELS[owner.status]) || owner.status;
+              const appliedDate = owner.createdAt ? new Date(owner.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
+              const bizType = (typeof BUSINESS_TYPES !== 'undefined' && BUSINESS_TYPES[owner.businessType]) || owner.businessType;
+            %>
+            <tr>
+              <td>
+                <div class="fw-bold text-dark"><%= owner.username %></div>
+                <div class="text-muted small"><%= owner.email %></div>
+              </td>
+              <td>
+                <div class="fw-semibold"><%= owner.businessName %></div>
+                <span class="badge bg-light text-dark border small"><%= bizType %></span>
+              </td>
+              <td>
+                <span class="small text-muted"><%= owner.phone || 'No phone provided' %></span>
+              </td>
+              <td>
+                <span class="small text-muted"><%= appliedDate %></span>
+              </td>
+              <td>
+                <span class="badge <%= badgeClass %>"><%= statusLabel %></span>
+                <% if (owner.status === 'rejected' && owner.rejectionReason) { %>
+                  <div class="small text-danger mt-1">
+                    <strong>Reason:</strong> <%= owner.rejectionReason %>
+                  </div>
+                <% } %>
+              </td>
+              <td class="text-end">
+                <div class="d-inline-flex flex-column gap-2" style="min-width: 200px;">
+                  <!-- Approve Button Form -->
+                  <form
+                    action="/dashboard/approvals/<%= owner.userId %>/approve"
+                    method="POST"
+                    class="d-inline"
+                  >
+                    <input type="hidden" name="filter" value="<%= filter %>" />
+                    <button type="submit" class="btn btn-sm btn-success w-100">
+                      <i class="fa-solid fa-check me-1"></i>Approve Owner
+                    </button>
+                  </form>
+
+                  <!-- Reject Form with Reason -->
+                  <form
+                    action="/dashboard/approvals/<%= owner.userId %>/reject"
+                    method="POST"
+                    class="d-inline"
+                  >
+                    <input type="hidden" name="filter" value="<%= filter %>" />
+                    <div class="input-group input-group-sm">
+                      <input
+                        type="text"
+                        name="reason"
+                        class="form-control"
+                        placeholder="Rejection reason (optional)"
+                        maxlength="500"
+                      />
+                      <button type="submit" class="btn btn-outline-danger">
+                        Reject
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>

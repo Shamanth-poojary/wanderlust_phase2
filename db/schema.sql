@@ -3,13 +3,17 @@ CREATE DATABASE IF NOT EXISTS wanderlust
 USE wanderlust;
 
 CREATE TABLE IF NOT EXISTS users (
-  user_id       INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-  username      VARCHAR(50)   NOT NULL,
-  email         VARCHAR(255)  NOT NULL,
-  password_hash VARCHAR(255)  NOT NULL,
-  role          ENUM('customer','owner','admin') NOT NULL DEFAULT 'customer',
-  admin_flag    TINYINT GENERATED ALWAYS AS (IF(role = 'admin', 1, NULL)) STORED,
-  created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  user_id                   INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  username                  VARCHAR(50)   NOT NULL,
+  email                     VARCHAR(255)  NOT NULL,
+  password_hash             VARCHAR(255)  NOT NULL,
+  role                      ENUM('customer','owner','admin') NOT NULL DEFAULT 'customer',
+  admin_flag                TINYINT GENERATED ALWAYS AS (IF(role = 'admin', 1, NULL)) STORED,
+  profile_picture_url       VARCHAR(500)  NULL,
+  profile_picture_public_id VARCHAR(255)  NULL,
+  phone                     VARCHAR(20)   NULL,
+  bio                       VARCHAR(300)  NULL,
+  created_at                TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (user_id),
   UNIQUE KEY uq_users_username (username),
   UNIQUE KEY uq_users_email (email),
@@ -66,4 +70,19 @@ CREATE TABLE IF NOT EXISTS reviews (
   CONSTRAINT fk_review_user FOREIGN KEY (user_id)
     REFERENCES users (user_id) ON DELETE CASCADE,
   KEY idx_reviews_listing (listing_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS wishlists (
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id    INT UNSIGNED NOT NULL,
+  listing_id INT UNSIGNED NOT NULL,
+  created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_user_listing (user_id, listing_id),
+  CONSTRAINT fk_wishlist_user FOREIGN KEY (user_id)
+    REFERENCES users (user_id) ON DELETE CASCADE,
+  CONSTRAINT fk_wishlist_listing FOREIGN KEY (listing_id)
+    REFERENCES listings (listing_id) ON DELETE CASCADE,
+  KEY idx_wishlists_user (user_id),
+  KEY idx_wishlists_listing (listing_id)
 ) ENGINE=InnoDB;

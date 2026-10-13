@@ -1,0 +1,252 @@
+<% layout("dashboard/layout") -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">
+      <i class="fa-solid fa-users-gear me-2 text-primary"></i>User Management
+    </h3>
+    <p class="text-muted mb-0">Browse, filter, and inspect registered customer, owner, and admin accounts.</p>
+  </div>
+  <span class="badge bg-light text-dark border px-3 py-2 fs-6">
+    Total: <%= totalUsers %> <%= totalUsers === 1 ? 'User' : 'Users' %>
+  </span>
+</div>
+
+<!-- Filters Card -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-3">
+    <form action="/dashboard/users" method="GET" class="row g-2 align-items-center">
+      <!-- Search -->
+      <div class="col-12 col-md-4">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text bg-white border-end-0">
+            <i class="fa-solid fa-magnifying-glass text-muted"></i>
+          </span>
+          <input
+            type="text"
+            name="search"
+            class="form-control border-start-0"
+            placeholder="Search username or email..."
+            value="<%= search || '' %>"
+          />
+        </div>
+      </div>
+
+      <!-- Role Filter -->
+      <div class="col-6 col-md-2">
+        <select name="role" class="form-select form-select-sm">
+          <option value="all" <%= roleFilter === 'all' ? 'selected' : '' %>>All Roles</option>
+          <option value="customer" <%= roleFilter === 'customer' ? 'selected' : '' %>>Customers</option>
+          <option value="owner" <%= roleFilter === 'owner' ? 'selected' : '' %>>Owners</option>
+          <option value="admin" <%= roleFilter === 'admin' ? 'selected' : '' %>>Admins</option>
+        </select>
+      </div>
+
+      <!-- Owner Status Filter -->
+      <div class="col-6 col-md-2">
+        <select name="ownerStatus" class="form-select form-select-sm">
+          <option value="all" <%= ownerStatusFilter === 'all' ? 'selected' : '' %>>All Statuses</option>
+          <option value="pending" <%= ownerStatusFilter === 'pending' ? 'selected' : '' %>>Pending</option>
+          <option value="approved" <%= ownerStatusFilter === 'approved' ? 'selected' : '' %>>Approved</option>
+          <option value="rejected" <%= ownerStatusFilter === 'rejected' ? 'selected' : '' %>>Rejected</option>
+        </select>
+      </div>
+
+      <!-- Sort -->
+      <div class="col-6 col-md-2">
+        <select name="sort" class="form-select form-select-sm">
+          <option value="newest" <%= sort === 'newest' ? 'selected' : '' %>>Newest Joined</option>
+          <option value="oldest" <%= sort === 'oldest' ? 'selected' : '' %>>Oldest Joined</option>
+        </select>
+      </div>
+
+      <!-- Filter / Reset Buttons -->
+      <div class="col-6 col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-sm btn-primary flex-grow-1">
+          <i class="fa-solid fa-filter me-1"></i>Filter
+        </button>
+        <a href="/dashboard/users" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+          <i class="fa-solid fa-rotate-left"></i>
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<% if (!users || users.length === 0) { %>
+  <div class="card border-0 shadow-sm text-center py-5">
+    <div class="card-body">
+      <i class="fa-solid fa-user-slash text-muted display-4 mb-3"></i>
+      <h5 class="fw-bold text-dark">No users matched your search criteria</h5>
+      <p class="text-muted">Try adjusting the filter options or clearing the search query.</p>
+      <a href="/dashboard/users" class="btn btn-sm btn-outline-primary">View All Users</a>
+    </div>
+  </div>
+<% } else { %>
+  <!-- Users Table -->
+  <div class="card border-0 shadow-sm overflow-hidden mb-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 50px;">Avatar</th>
+            <th>User</th>
+            <th>Role</th>
+            <th>Owner Status</th>
+            <th>Listings</th>
+            <th>Joined Date</th>
+            <th class="text-end" style="min-width: 140px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (let u of users) { %>
+            <%
+              const isMainAdmin = (u.username === mainAdminUsername || (u.role === 'admin' && u.id === 1));
+              const isSelf = (currentUser && u.id === currentUser.id);
+              const roleBadge = {
+                customer: 'bg-info text-dark',
+                owner:    'bg-primary',
+                admin:    'bg-danger',
+              }[u.role] || 'bg-secondary';
+            %>
+            <tr>
+              <td>
+                <% if (u.profilePictureUrl) { %>
+                  <img
+                    src="<%= u.profilePictureUrl %>"
+                    alt="<%= u.username %>"
+                    class="rounded-circle border"
+                    style="width: 38px; height: 38px; object-fit: cover;"
+                  />
+                <% } else { %>
+                  <div
+                    class="rounded-circle bg-secondary text-white d-inline-flex align-items-center justify-content-center"
+                    style="width: 38px; height: 38px; font-weight: 600; font-size: 0.9rem;"
+                  >
+                    <%= u.username.charAt(0).toUpperCase() %>
+                  </div>
+                <% } %>
+              </td>
+              <td>
+                <div class="fw-bold text-dark d-flex align-items-center gap-1">
+                  <%= u.username %>
+                  <% if (isMainAdmin) { %>
+                    <span class="badge bg-warning text-dark small" title="System Super Administrator">Super Admin</span>
+                  <% } else if (isSelf) { %>
+                    <span class="badge bg-secondary small">You</span>
+                  <% } %>
+                </div>
+                <div class="text-muted small"><%= u.email %></div>
+              </td>
+              <td>
+                <span class="badge <%= roleBadge %>"><%= u.role %></span>
+              </td>
+              <td>
+                <% if (u.role === 'owner') { %>
+                  <%
+                    const stBadge = {
+                      pending:  'bg-warning text-dark',
+                      approved: 'bg-success',
+                      rejected: 'bg-danger',
+                    }[u.ownerStatus] || 'bg-secondary';
+                  %>
+                  <span class="badge <%= stBadge %>"><%= u.ownerStatus || 'none' %></span>
+                <% } else { %>
+                  <span class="text-muted small">—</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (u.role === 'owner') { %>
+                  <span class="badge bg-light text-dark border">
+                    <%= u.listingCount || 0 %> <%= (u.listingCount === 1) ? 'listing' : 'listings' %>
+                  </span>
+                <% } else { %>
+                  <span class="text-muted small">—</span>
+                <% } %>
+              </td>
+              <td>
+                <span class="small text-muted">
+                  <%= u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : 'N/A' %>
+                </span>
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <!-- View Details -->
+                  <a href="/dashboard/users/<%= u.id %>" class="btn btn-outline-primary" title="View Profile & Listings">
+                    <i class="fa-solid fa-eye"></i> Details
+                  </a>
+
+                  <!-- Delete User Action -->
+                  <% if (!isMainAdmin && !isSelf) { %>
+                    <button
+                      type="button"
+                      class="btn btn-outline-danger"
+                      title="Delete User"
+                      onclick="confirmDeleteUser('<%= u.id %>', '<%= u.username %>')"
+                    >
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  <% } else { %>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      disabled
+                      title="Protected Administrator Account"
+                    >
+                      <i class="fa-solid fa-lock"></i>
+                    </button>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+    <%
+      function buildPageUrl(pageNumber) {
+        const params = new URLSearchParams();
+        if (roleFilter && roleFilter !== 'all') params.set('role', roleFilter);
+        if (ownerStatusFilter && ownerStatusFilter !== 'all') params.set('ownerStatus', ownerStatusFilter);
+        if (search) params.set('search', search);
+        if (sort) params.set('sort', sort);
+        params.set('page', pageNumber);
+        return `/dashboard/users?${params.toString()}`;
+      }
+    %>
+    <nav aria-label="Users page navigation">
+      <ul class="pagination pagination-sm justify-content-center">
+        <li class="page-item <%= currentPage <= 1 ? 'disabled' : '' %>">
+          <a class="page-link" href="<%= buildPageUrl(currentPage - 1) %>">Previous</a>
+        </li>
+        <% for (let p = 1; p <= totalPages; p++) { %>
+          <li class="page-item <%= p === currentPage ? 'active' : '' %>">
+            <a class="page-link" href="<%= buildPageUrl(p) %>"><%= p %></a>
+          </li>
+        <% } %>
+        <li class="page-item <%= currentPage >= totalPages ? 'disabled' : '' %>">
+          <a class="page-link" href="<%= buildPageUrl(currentPage + 1) %>">Next</a>
+        </li>
+      </ul>
+    </nav>
+  <% } %>
+<% } %>
+
+<!-- Hidden Delete Form & Modal Script -->
+<form id="deleteUserForm" method="POST" action="" style="display: none;">
+  <input type="hidden" name="_method" value="DELETE" />
+</form>
+
+<script>
+  function confirmDeleteUser(userId, username) {
+    if (confirm(`Are you sure you want to permanently delete user "${username}"? All associated data and Cloudinary images will be removed.`)) {
+      const form = document.getElementById("deleteUserForm");
+      form.action = `/dashboard/users/${userId}?_method=DELETE`;
+      form.submit();
+    }
+  }
+</script>

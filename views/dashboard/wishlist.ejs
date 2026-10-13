@@ -1,0 +1,76 @@
+<% layout("dashboard/layout") -%>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h3 class="fw-bold mb-1">
+      <i class="fa-solid fa-heart me-2 text-danger"></i>My Wishlist
+    </h3>
+    <p class="text-muted mb-0">Listings you've saved for future trips and experiences.</p>
+  </div>
+  <% if (wishlist && wishlist.length > 0) { %>
+    <span class="badge bg-light text-dark border px-3 py-2 fs-6">
+      <%= wishlist.length %> <%= wishlist.length === 1 ? 'saved listing' : 'saved listings' %>
+    </span>
+  <% } %>
+</div>
+
+<% if (!wishlist || wishlist.length === 0) { %>
+  <!-- Empty State -->
+  <div class="card border-0 shadow-sm text-center py-5">
+    <div class="card-body">
+      <div class="mb-3">
+        <i class="fa-regular fa-heart text-muted display-3"></i>
+      </div>
+      <h4 class="fw-bold text-dark">Your wishlist is empty</h4>
+      <p class="text-muted mx-auto" style="max-width: 450px;">
+        Explore vacation stays, villas, and venues and tap the heart icon on any card to save your favorites here.
+      </p>
+      <a href="/listings" class="btn btn-primary px-4 mt-2">
+        <i class="fa-solid fa-compass me-2"></i>Explore Listings
+      </a>
+    </div>
+  </div>
+<% } else { %>
+  <!-- Wishlist Grid -->
+  <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+    <% for (let item of wishlist) { %>
+      <div class="col" id="wishlist-item-<%= item.id %>">
+        <div class="card h-100 shadow-sm border-0 listing-card position-relative overflow-hidden">
+          <img
+            src="<%= item.image.url %>"
+            class="card-img-top"
+            alt="<%= item.title %>"
+            style="height: 180px; object-fit: cover;"
+          />
+          <div class="card-body d-flex flex-column">
+            <h5 class="card-title fw-bold mb-1 text-truncate">
+              <%= item.title %>
+            </h5>
+            <p class="text-muted small mb-2">
+              <i class="fa-solid fa-location-dot me-1 text-danger"></i><%= item.location %>, <%= item.country %>
+            </p>
+            <p class="fw-semibold text-primary mb-3">
+              ₹ <%= item.price ? item.price.toLocaleString("en-IN") : 'N/A' %>
+              <span class="text-muted fw-normal small">/ night</span>
+            </p>
+            <div class="mt-auto d-flex gap-2">
+              <a href="/listings/<%= item.id %>" class="btn btn-sm btn-outline-primary flex-grow-1">
+                <i class="fa-solid fa-eye me-1"></i>View
+              </a>
+              <form
+                action="/wishlist/<%= item.id %>?_method=DELETE"
+                method="POST"
+                class="d-inline"
+                onsubmit="return confirm('Remove this listing from your wishlist?');"
+              >
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove from wishlist">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% } %>
+  </div>
+<% } %>

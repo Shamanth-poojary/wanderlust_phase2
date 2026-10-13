@@ -140,6 +140,61 @@ async function migrate() {
       `Step 6: Grandfathered owners with listings (approved profiles: ${countRows[0].c} total).`
     );
 
+    // Step 7: Phase 4 - Add profile columns to users if missing
+    const [userCols] = await conn.query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'users'
+         AND COLUMN_NAME IN ('profile_picture_url', 'profile_picture_public_id', 'phone', 'bio')`,
+      [dbName]
+    );
+    const existingCols = new Set(userCols.map((r) => r.COLUMN_NAME));
+
+    if (!existingCols.has("profile_picture_url")) {
+      await conn.query(`ALTER TABLE users ADD COLUMN profile_picture_url VARCHAR(500) NULL`);
+      console.log("Step 7a: Added 'profile_picture_url' column to users.");
+    }
+    if (!existingCols.has("profile_picture_public_id")) {
+      await conn.query(`ALTER TABLE users ADD COLUMN profile_picture_public_id VARCHAR(255) NULL`);
+      console.log("Step 7b: Added 'profile_picture_public_id' column to users.");
+    }
+    if (!existingCols.has("phone")) {
+      await conn.query(`ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL`);
+      console.log("Step 7c: Added 'phone' column to users.");
+    }
+    if (!existingCols.has("bio")) {
+      await conn.query(`ALTER TABLE users ADD COLUMN bio VARCHAR(300) NULL`);
+      console.log("Step 7d: Added 'bio' column to users.");
+    }
+
+    // Step 8: Phase 4 - Create wishlists table if missing
+    const [wishlistTbl] = await conn.query(
+      `SELECT TABLE_NAME FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'wishlists'`,
+      [dbName]
+    );
+
+    if (wishlistTbl.length === 0) {
+      await conn.query(`
+        CREATE TABLE wishlists (
+          id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+          user_id    INT UNSIGNED NOT NULL,
+          listing_id INT UNSIGNED NOT NULL,
+          created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          UNIQUE KEY uq_user_listing (user_id, listing_id),
+          CONSTRAINT fk_wishlist_user FOREIGN KEY (user_id)
+            REFERENCES users (user_id) ON DELETE CASCADE,
+          CONSTRAINT fk_wishlist_listing FOREIGN KEY (listing_id)
+            REFERENCES listings (listing_id) ON DELETE CASCADE,
+          KEY idx_wishlists_user (user_id),
+          KEY idx_wishlists_listing (listing_id)
+        ) ENGINE=InnoDB
+      `);
+      console.log("Step 8: Created 'wishlists' table.");
+    } else {
+      console.log("Step 8: 'wishlists' table already exists - skipped.");
+    }
+
     console.log("Migration complete.");
   } finally {
     await conn.end();
